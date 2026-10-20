@@ -95,9 +95,13 @@ function render() {
       <td>${escapeHtml(r.p.issuing_agency || 'N/A')}</td>
       <td class="col-date">${formatDate(r.p.issue_date)}</td>
       <td class="col-date">${dueText}${dueExtra}</td>
-      <td><span class="status-badge ${r.st}">${r.meta.kor}</span></td>
+      <td><span class="status-badge ${r.st} status-edit" data-status-id="${escapeHtml(r.p.id)}">${r.meta.kor}</span></td>
     </tr>`;
   }).join('');
+
+  tableBody.querySelectorAll('[data-status-id]').forEach((el) => {
+    el.addEventListener('click', () => openStatusEditor(el.dataset.statusId));
+  });
 }
 
 function daysUntilLocal(dateStr) {
@@ -117,6 +121,48 @@ function displayStatus(p) {
   if (days < 0) return 'expired';
   if (days <= alertDays) return 'review';
   return 'ok';
+}
+
+// ---------- 상태 색상 임의 수정 (인라인) ----------
+function openStatusEditor(id) {
+  const p = permits.find((x) => x.id === id);
+  if (!p) return;
+  const badge = tableBody.querySelector(`[data-status-id="${id}"]`);
+  if (!badge) return;
+
+  const select = document.createElement('select');
+  select.className = 'status-editor';
+  const options = [
+    ['', '자동 계산(만료일 기준)'],
+    ['ok', '유효 · 초록'],
+    ['review', '갱신중 · 노랑'],
+    ['expired', '만료 · 빨강'],
+    ['none', '해당 없음 · 흰색'],
+  ];
+  select.innerHTML = options.map(([v, t]) =>
+    `<option value="${v}" ${(p.status_override || '') === v ? 'selected' : ''}>${t}</option>`
+  ).join('');
+
+  badge.replaceWith(select);
+  select.focus();
+
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    select.remove();
+    render();
+  };
+
+  select.addEventListener('change', () => {
+    p.status_override = select.value;
+    postData('save_permits', { permits });
+    finish();
+  });
+  select.addEventListener('blur', finish);
+  select.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') finish();
+  });
 }
 
 // ---------- 연결 상태 ----------

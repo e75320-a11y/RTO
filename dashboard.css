@@ -89,6 +89,14 @@ body {
 .status-badge.none { background: #fff; color: var(--text); border: 1px solid var(--border); }
 .status-badge.expired { background: var(--expired); }
 
+.status-badge.status-edit { cursor: pointer; }
+.status-badge.status-edit:hover { outline: 2px solid var(--blue); outline-offset: 1px; }
+.status-editor {
+  min-width: 120px; padding: 5px 8px; border-radius: 4px;
+  border: 1px solid var(--blue); font-size: 12px; font-weight: 700;
+  background: #fff; color: var(--text);
+}
+
 .row-review td:not(.cat-cell) { background: #fff7d6; }
 .row-expired td:not(.cat-cell) { background: #fdecea; }
 
