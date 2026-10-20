@@ -344,6 +344,17 @@ async function onSave(e) {
         created_at: new Date().toISOString(),
       });
       await persistChangeRequests();
+      postData('notify_change_request', {
+        site: settings.site_name || 'Pyungtek',
+        lead_email: settings.lead_email || '',
+        request: {
+          action,
+          proposed_data: payload,
+          requested_by: user.name,
+          requested_by_email: user.email,
+          note,
+        },
+      });
       alert('팀장 승인 요청이 등록되었습니다.');
     }
     $('#permit-dialog').close();
@@ -374,6 +385,17 @@ async function requestDelete(permit) {
         created_at: new Date().toISOString(),
       });
       await persistChangeRequests();
+      postData('notify_change_request', {
+        site: settings.site_name || 'Pyungtek',
+        lead_email: settings.lead_email || '',
+        request: {
+          action: 'delete',
+          proposed_data: payload,
+          requested_by: user.name,
+          requested_by_email: user.email,
+          note: '',
+        },
+      });
       alert('팀장 삭제 승인 요청이 등록되었습니다.');
     }
     await refreshAll();
