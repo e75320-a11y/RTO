@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RTO - Right To Operate Permits and Licenses</title>
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-name">EATON</span>
+      <span class="brand-tag">Powering Business Worldwide</span>
+    </div>
+    <h1 class="title"><span id="site-title">Right To Operate Permits and Licenses</span> <span class="site" id="site-name"></span></h1>
+    <div class="actions">
+      <span class="conn" id="conn-status" title="연결 상태">연결 확인 중…</span>
+      <button id="btn-fullscreen" class="btn ghost" title="전체화면">⛶ 전체화면</button>
+      <button id="btn-pptx" class="btn ghost" title="PowerPoint 파일로 저장">⬇ PPTX 저장</button>
+      <a href="admin.html" class="btn ghost" title="관리자 화면">⚙ 관리</a>
+    </div>
+  </header>
+
+  <main class="table-wrap">
+    <table class="rto-table" id="rto-table">
+      <thead>
+        <tr>
+          <th class="col-cat">Category</th>
+          <th class="col-desc">Permit / License Description</th>
+          <th class="col-agency">Issuing Agency</th>
+          <th class="col-date">Issue Date</th>
+          <th class="col-date">Due Date</th>
+          <th class="col-status">Current Status</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        <tr><td colspan="6" class="loading">데이터를 불러오는 중…</td></tr>
+      </tbody>
+    </table>
+  </main>
+
+  <footer class="foot">
+    <div class="legend">
+      <span class="legend-item"><i class="sw sw-ok"></i> Certificate/permit up to date</span>
+      <span class="legend-item"><i class="sw sw-review"></i> Certificate/Permit is under renew/review</span>
+      <span class="legend-item"><i class="sw sw-expired"></i> Certificate/permit is out of date</span>
+      <span class="legend-item"><i class="sw sw-none"></i> Not applicable</span>
+    </div>
+    <div class="commit">
+      <p>We commit to meet or exceed regulatory and company requirements consistent with Eaton's Policies on Ethics and compliance.</p>
+      <p>We work to create a "Zero Incident Mindset" and to continuously improve our EHS performance.</p>
+      <p class="contact">Contact: <span class="contact-editor"><span id="contact-name" title="클릭하여 연락처 수정">Inhee Park</span></span> <button id="btn-edit-contact" type="button" class="btn-mini" title="연락처 수정">✎</button></p>
+    </div>
+  </footer>
+
+  <script type="module" src="dashboard.js"></script>
+</body>
+</html>

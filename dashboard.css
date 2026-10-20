@@ -1,0 +1,134 @@
+:root {
+  --blue: #003087;      /* Eaton blue */
+  --blue-light: #1a6dc8;
+  --border: #c9d2de;
+  --text: #1f2937;
+  --ok: #2e9e44;
+  --review: #f5b400;
+  --expired: #d93025;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+  color: var(--text);
+  background: #fff;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ---------- 상단 ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 20px;
+  border-bottom: 3px solid var(--blue);
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  background: var(--blue);
+  color: #fff;
+  padding: 8px 14px;
+  min-width: 210px;
+}
+.brand-name { font-size: 28px; font-weight: 800; letter-spacing: 1px; line-height: 1; }
+.brand-tag { font-size: 11px; opacity: .9; }
+
+.title { flex: 1; font-size: 20px; font-weight: 700; color: var(--blue); }
+.title .site { font-weight: 400; color: #555; font-size: 15px; }
+
+.actions { display: flex; align-items: center; gap: 8px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 7px 12px; border-radius: 6px; cursor: pointer;
+  font-size: 13px; border: 1px solid transparent; text-decoration: none;
+}
+.btn.ghost { background: #fff; border-color: #c7d0da; color: #333; }
+.btn.ghost:hover { background: #f0f4f8; }
+
+.conn { font-size: 12px; color: #888; }
+.conn.on { color: var(--ok); }
+.conn.off { color: var(--expired); }
+
+/* ---------- 테이블 ---------- */
+.table-wrap { flex: 1; overflow: auto; padding: 0 20px 10px; }
+
+.rto-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.rto-table th {
+  background: var(--blue); color: #fff; font-weight: 700;
+  padding: 10px 8px; text-align: left; position: sticky; top: 0; z-index: 2;
+  white-space: nowrap;
+}
+.rto-table td { padding: 8px; border: 1px solid var(--border); vertical-align: middle; }
+
+.col-cat { width: 16%; }
+.col-desc { width: 36%; }
+.col-agency { width: 18%; }
+.col-date { width: 10%; text-align: center; }
+.col-status { width: 10%; text-align: center; }
+
+.rto-table tbody tr:hover { background: #f4f8fd; }
+
+.cat-cell { font-weight: 700; color: var(--blue); vertical-align: middle; }
+
+.status-badge {
+  display: inline-block; min-width: 86px; text-align: center;
+  padding: 5px 8px; border-radius: 4px; color: #fff; font-weight: 700; font-size: 12px;
+}
+.status-badge.ok { background: var(--ok); }
+.status-badge.review { background: var(--review); color: #333; }
+.status-badge.none { background: #fff; color: var(--text); border: 1px solid var(--border); }
+.status-badge.expired { background: var(--expired); }
+
+.row-review td:not(.cat-cell) { background: #fff7d6; }
+.row-expired td:not(.cat-cell) { background: #fdecea; }
+
+.loading { text-align: center; color: #888; padding: 30px !important; }
+
+/* ---------- 하단 ---------- */
+.foot {
+  display: flex; justify-content: space-between; gap: 30px;
+  padding: 12px 20px; border-top: 3px solid var(--blue); background: #f5f7fa;
+}
+.legend { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.legend-item { display: flex; align-items: center; gap: 8px; }
+.sw { width: 14px; height: 14px; display: inline-block; border-radius: 3px; }
+.sw-ok { background: var(--ok); }
+.sw-review { background: var(--review); }
+.sw-none { background: #fff; border: 1px solid var(--border); }
+.sw-expired { background: var(--expired); }
+
+.commit { flex: 1; font-size: 12px; color: #444; display: flex; flex-direction: column; gap: 2px; align-items: flex-end; text-align: right; }
+.commit .contact { font-weight: 700; }
+
+.contact-editor { display: inline-flex; align-items: center; }
+#contact-name { cursor: pointer; border-bottom: 1px dashed transparent; }
+#contact-name:hover { color: var(--blue); border-bottom-color: var(--blue); }
+.contact-input {
+  font: inherit; font-weight: 700; color: var(--text);
+  border: 1px solid var(--blue); border-radius: 4px;
+  padding: 1px 6px; width: 180px;
+}
+.btn-mini {
+  background: none; border: none; cursor: pointer;
+  color: var(--blue); font-size: 13px; line-height: 1; padding: 0 2px;
+}
+.btn-mini:hover { color: var(--blue-light); }
+
+/* ---------- 전체화면 ---------- */
+body:fullscreen .topbar .actions .btn.ghost { display: none; }
+body:fullscreen .topbar .actions .conn { display: none; }
+
+@media print {
+  .actions { display: none; }
+  .table-wrap { overflow: visible; }
+}

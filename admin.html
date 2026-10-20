@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RTO 관리자</title>
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <header class="admin-top">
+    <div class="brand">
+      <span class="brand-name">EATON</span>
+      <span class="brand-tag">RTO Admin</span>
+    </div>
+    <h1>Right To Operate 인허가 관리</h1>
+    <div class="user-box">
+      <label>내 이름 <input id="user-name" placeholder="홍길동" /></label>
+      <label>이메일 <input id="user-email" placeholder="you@eaton.com" /></label>
+      <span id="role-badge" class="role-badge">일반</span>
+      <a href="index.html" class="btn primary" target="_blank">대시보드 보기 ↗</a>
+    </div>
+  </header>
+
+  <div id="conn-banner" class="conn-banner" hidden>⚠ Supabase 연결 실패 — [supabase-config.js](supabase-config.js) 의 URL / anon 키를 확인하세요.</div>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="permits">인허가 목록</button>
+    <button class="tab" data-tab="requests">변경 요청 <span id="req-badge" class="badge" hidden>0</span></button>
+    <button class="tab" data-tab="history">변경 이력</button>
+    <button class="tab" data-tab="assignees">담당자</button>
+    <button class="tab" data-tab="settings">설정</button>
+  </nav>
+
+  <main class="content">
+    <!-- 인허가 목록 -->
+    <section id="panel-permits" class="panel active">
+      <div class="panel-bar">
+        <button class="btn primary" id="btn-add">+ 새 인허가 등록</button>
+        <select id="filter-category">
+          <option value="">전체 카테고리</option>
+          <option>Mandated Licenses/Permits</option>
+          <option>Localized Licenses/Permits</option>
+        </select>
+        <button class="btn" id="btn-notify">✉ 지금 만료 알림 발송</button>
+        <span class="hint" id="notify-result"></span>
+      </div>
+      <div class="table-scroll">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>카테고리</th><th>인허가명</th><th>발급기관</th><th>발급일</th>
+              <th>만료일</th><th>상태</th><th>담당자</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="permits-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 변경 요청 -->
+    <section id="panel-requests" class="panel">
+      <p class="hint">일반 사용자의 등록/수정/삭제 요청이 여기에 쌓입니다. 팀장(설정의 lead_email)이 승인하면 반영되고, 변경 이력에 기록됩니다.</p>
+      <div class="table-scroll">
+        <table class="admin-table">
+          <thead>
+            <tr><th>요청일</th><th>유형</th><th>인허가명</th><th>요청자</th><th>상태</th><th></th></tr>
+          </thead>
+          <tbody id="requests-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 변경 이력 -->
+    <section id="panel-history" class="panel">
+      <div class="table-scroll">
+        <table class="admin-table">
+          <thead>
+            <tr><th>일시</th><th>유형</th><th>인허가명</th><th>변경 내용</th><th>변경자</th></tr>
+          </thead>
+          <tbody id="history-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 담당자 -->
+    <section id="panel-assignees" class="panel">
+      <div class="panel-bar">
+        <input id="a-name" placeholder="이름" />
+        <input id="a-email" placeholder="이메일" />
+        <select id="a-role"><option value="member">일반</option><option value="lead">팀장</option></select>
+        <button class="btn primary" id="btn-add-assignee">담당자 추가</button>
+      </div>
+      <div class="table-scroll">
+        <table class="admin-table">
+          <thead><tr><th>이름</th><th>이메일</th><th>역할</th><th></th></tr></thead>
+          <tbody id="assignees-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 설정 -->
+    <section id="panel-settings" class="panel">
+      <form id="settings-form" class="settings-grid">
+        <label>회사명 <input name="company" /></label>
+        <label>사업장명(영문) <input name="site_name" /></label>
+        <label>대시보드 제목 <input name="title" /></label>
+        <label>담당 연락처 <input name="contact" /></label>
+        <label>검토 시작 기준(일) <input name="alert_days" type="number" min="1" /></label>
+        <label>알림 발송 시점(D-N, 콤마구분) <input name="reminder_buckets" /></label>
+        <label>팀장 이름 <input name="lead_name" /></label>
+        <label>팀장 이메일 <input name="lead_email" /></label>
+        <label class="wide">Google Apps Script Web App URL <input name="apps_script_url" placeholder="https://script.google.com/macros/s/…/exec" /></label>
+        <div class="wide">
+          <button type="submit" class="btn primary">설정 저장</button>
+          <span class="hint" id="settings-result"></span>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <!-- 인허가 등록/수정 모달 -->
+  <dialog id="permit-dialog">
+    <form id="permit-form" method="dialog">
+      <h2 id="dialog-title">새 인허가 등록</h2>
+      <input type="hidden" name="id" />
+      <div class="form-grid">
+        <label>카테고리
+          <select name="category">
+            <option>Mandated Licenses/Permits</option>
+            <option>Localized Licenses/Permits</option>
+          </select>
+        </label>
+        <label>담당자 이름 <input name="assignee_name" /></label>
+        <label class="wide">인허가명(한글) * <input name="description" required /></label>
+        <label class="wide">영문 명칭 <input name="description_en" /></label>
+        <label>발급기관 <input name="issuing_agency" /></label>
+        <label>정렬순서 <input name="sort_order" type="number" value="0" /></label>
+        <label>발급일 <input name="issue_date" type="date" /></label>
+        <label>만료일 <input name="due_date" type="date" /></label>
+        <label>수동 상태
+          <select name="status_override">
+            <option value="">자동 계산</option>
+            <option value="ok">최신 상태</option>
+            <option value="review">갱신·검토 중</option>
+            <option value="expired">만료</option>
+          </select>
+        </label>
+        <label class="wide">담당자 이메일(알림 수신) <input name="assignee_email" type="email" /></label>
+        <label class="wide">변경 사유/메모 <input name="note" placeholder="팀장 승인 요청 시 함께 전달됩니다" /></label>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="btn" id="btn-cancel">취소</button>
+        <button type="submit" class="btn primary" id="btn-save">저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="admin.js"></script>
+</body>
+</html>
