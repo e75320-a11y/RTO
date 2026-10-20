@@ -471,7 +471,7 @@ let notifyItems = [];
 
 async function triggerNotifications() {
   const resultEl = $('#notify-result');
-  const due = permits.filter((p) => p.active !== false && p.due_date && p.assignee_email);
+  const due = permits.filter((p) => p.active !== false && p.due_date);
   notifyItems = due
     .filter((p) => ['review', 'expired'].includes(computeStatus(p, alertDays)))
     .map((p) => ({
@@ -500,15 +500,19 @@ function daysLeftText(d) {
 
 function renderNotifyPreview() {
   const emails = new Set(notifyItems.map((it) => (it.assignee_email || '').trim().toLowerCase()).filter(Boolean));
-  const rows = notifyItems.map((it) => `<tr>
+  const missing = notifyItems.filter((it) => !(it.assignee_email || '').trim()).length;
+  const rows = notifyItems.map((it) => {
+    const email = (it.assignee_email || '').trim();
+    return `<tr>
     <td>${escapeHtml(it.description)}</td>
-    <td>${escapeHtml(it.assignee_name || '-')}<br><small>${escapeHtml(it.assignee_email || '')}</small></td>
+    <td>${escapeHtml(it.assignee_name || '-')}<br><small>${email ? escapeHtml(email) : '<span class="warn">이메일 없음</span>'}</small></td>
     <td>${escapeHtml(it.due_date || '')}</td>
     <td>${daysLeftText(it.days_left)}</td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
 
   $('#notify-preview').innerHTML = `
-    <p class="notify-summary">총 <b>${notifyItems.length}</b>건 · 대상 담당자 <b>${emails.size}</b>명</p>
+    <p class="notify-summary">총 <b>${notifyItems.length}</b>건 · 대상 담당자 <b>${emails.size}</b>명${missing ? ` · <span class="warn">이메일 없음 ${missing}건</span>` : ''}</p>
     <div class="table-scroll" style="max-height: 320px;">
       <table class="admin-table">
         <thead><tr><th>인허가명</th><th>담당자</th><th>만료일</th><th>남은기간</th></tr></thead>
@@ -520,17 +524,21 @@ function renderNotifyPreview() {
 async function sendNotifications() {
   const resultEl = $('#notify-result');
   const sendBtn = $('#btn-notify-send');
-  if (!notifyItems.length) return;
+  const sendable = notifyItems.filter((it) => (it.assignee_email || '').trim());
+  if (!sendable.length) {
+    resultEl.textContent = '담당자 이메일이 없어 발송할 수 없습니다. 각 항목의 담당자 이메일을 입력하세요.';
+    return;
+  }
   sendBtn.disabled = true;
   sendBtn.textContent = '발송 중…';
   try {
     await postData('notify', {
       site: settings.site_name || 'Pyungtek',
       lead_email: settings.lead_email || '',
-      items: notifyItems,
+      items: sendable,
     });
     $('#notify-dialog').close();
-    resultEl.textContent = `요청 전송됨: ${notifyItems.length}건 (Apps Script 실행 로그/알림로그에서 확인)`;
+    resultEl.textContent = `요청 전송됨: ${sendable.length}건 (Apps Script 실행 로그/알림로그에서 확인)`;
   } catch (err) {
     resultEl.textContent = '전송 실패: ' + err.message;
   } finally {
