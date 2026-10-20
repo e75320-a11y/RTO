@@ -96,4 +96,6 @@ dialog h2 { margin-bottom: 14px; color: var(--blue); font-size: 17px; }
 .form-grid label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: #444; }
 .form-grid input, .form-grid select { padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
 .form-grid .wide { grid-column: 1 / -1; }
+.form-grid .check-label { flex-direction: row; align-items: center; gap: 6px; align-self: end; padding-bottom: 8px; }
+.form-grid .check-label input { width: auto; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }

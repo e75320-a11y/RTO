@@ -269,6 +269,16 @@ function openDialog(permit) {
     form.elements.assignee_email.value = permit.assignee_email || '';
     form.elements.sort_order.value = permit.sort_order ?? 0;
   }
+  const dueNone = $('#due-none');
+  dueNone.checked = !!permit && !permit.due_date;
+  form.elements.due_date.disabled = dueNone.checked;
+  if (dueNone.checked) form.elements.due_date.value = '';
+
+  const issueNone = $('#issue-none');
+  issueNone.checked = !!permit && !permit.issue_date;
+  form.elements.issue_date.disabled = issueNone.checked;
+  if (issueNone.checked) form.elements.issue_date.value = '';
+
   buildAssigneeDatalist();
   $('#permit-dialog').showModal();
 }
@@ -300,8 +310,8 @@ function formToPayload(form) {
     description: str('description'),
     description_en: str('description_en'),
     issuing_agency: str('issuing_agency'),
-    issue_date: str('issue_date'),
-    due_date: str('due_date'),
+    issue_date: $('#issue-none').checked ? null : str('issue_date'),
+    due_date: $('#due-none').checked ? null : str('due_date'),
     status_override: str('status_override'),
     assignee_name: str('assignee_name'),
     assignee_email: str('assignee_email'),
@@ -486,6 +496,16 @@ $('#btn-cancel').addEventListener('click', () => $('#permit-dialog').close());
 $('#permit-form').addEventListener('submit', onSave);
 $('#btn-notify').addEventListener('click', triggerNotifications);
 $('#filter-category').addEventListener('change', renderPermits);
+$('#due-none').addEventListener('change', () => {
+  const dueInput = $('#permit-form').elements.due_date;
+  dueInput.disabled = $('#due-none').checked;
+  if ($('#due-none').checked) dueInput.value = '';
+});
+$('#issue-none').addEventListener('change', () => {
+  const issueInput = $('#permit-form').elements.issue_date;
+  issueInput.disabled = $('#issue-none').checked;
+  if ($('#issue-none').checked) issueInput.value = '';
+});
 $('#settings-form').addEventListener('submit', onSaveSettings);
 $('#user-name').addEventListener('change', saveUser);
 $('#user-email').addEventListener('change', saveUser);
