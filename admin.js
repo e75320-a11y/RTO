@@ -529,6 +529,36 @@ async function onSaveSettings(e) {
   }
 }
 
+async function onTestEmail() {
+  const resultEl = $('#test-mail-result');
+  const recipients = [];
+  if ($('#test-mail-lead').checked) recipients.push('lead');
+  if ($('#test-mail-assignees').checked) recipients.push('assignees');
+
+  if (!recipients.length) { resultEl.textContent = '수신 대상을 선택하세요.'; return; }
+  if (recipients.includes('lead') && !(settings.lead_email || '').trim()) {
+    resultEl.textContent = '팀장 이메일이 설정되지 않았습니다.';
+    return;
+  }
+  if (recipients.includes('assignees') && !assignees.length) {
+    resultEl.textContent = '담당자가 없습니다.';
+    return;
+  }
+
+  resultEl.textContent = '발송 중…';
+  try {
+    await postData('test_email', {
+      site: settings.site_name || 'Pyungtek',
+      lead_email: settings.lead_email || '',
+      recipients,
+      assignee_emails: assignees.map((a) => a.email),
+    });
+    resultEl.textContent = '시험 메일 발송 요청 완료 — 수신함/Apps Script 실행 로그에서 확인';
+  } catch (err) {
+    resultEl.textContent = '발송 실패: ' + err.message;
+  }
+}
+
 // ---------- 탭 ----------
 document.querySelectorAll('.tab').forEach((tab) => {
   tab.addEventListener('click', () => {
@@ -556,6 +586,7 @@ $('#issue-none').addEventListener('change', () => {
   if ($('#issue-none').checked) issueInput.value = '';
 });
 $('#settings-form').addEventListener('submit', onSaveSettings);
+$('#btn-test-mail').addEventListener('click', onTestEmail);
 $('#user-name').addEventListener('change', saveUser);
 $('#user-email').addEventListener('change', saveUser);
 
