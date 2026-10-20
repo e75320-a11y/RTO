@@ -141,6 +141,7 @@ tr.drag-over td { box-shadow: inset 0 2px 0 var(--blue); }
 /* ---------- 전체화면 ---------- */
 body:fullscreen .topbar .actions .btn.ghost { display: none; }
 body:fullscreen .topbar .actions .conn { display: none; }
+body:fullscreen th.col-move, body:fullscreen td.col-move { display: none; }
 
 @media print {
   .actions { display: none; }
