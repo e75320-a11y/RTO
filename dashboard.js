@@ -92,22 +92,27 @@ function render() {
     const dueText = r.p.due_date ? formatDate(r.p.due_date) : 'N/A';
     const dueExtra = days !== null && days < 0 ? ` (D+${-days})` : '';
     const rowClass = r.st === 'expired' ? 'row-expired' : r.st === 'review' ? 'row-review' : '';
-    return `<tr class="${rowClass}">
+    return `<tr class="${rowClass}" draggable="true" data-id="${escapeHtml(r.p.id)}">
       ${r.catCell}
       <td>${escapeHtml(fullDesc(r.p))}</td>
       <td>${escapeHtml(r.p.issuing_agency || 'N/A')}</td>
       <td class="col-date">${formatDate(r.p.issue_date)}</td>
       <td class="col-date">${dueText}${dueExtra}</td>
       <td><span class="status-badge ${r.st} status-edit" data-status-id="${escapeHtml(r.p.id)}">${r.meta.kor}</span></td>
-      <td class="col-move"><button class="move-btn" data-up="${escapeHtml(r.p.id)}" title="위로 이동">▲</button><button class="move-btn" data-down="${escapeHtml(r.p.id)}" title="아래로 이동">▼</button></td>
+      <td class="col-move"><span class="drag-handle" title="드래그하여 이동">⠿</span></td>
     </tr>`;
   }).join('');
 
   tableBody.querySelectorAll('[data-status-id]').forEach((el) => {
     el.addEventListener('click', () => openStatusEditor(el.dataset.statusId));
   });
-  tableBody.querySelectorAll('[data-up]').forEach((b) => b.addEventListener('click', () => movePermit(b.dataset.up, -1)));
-  tableBody.querySelectorAll('[data-down]').forEach((b) => b.addEventListener('click', () => movePermit(b.dataset.down, 1)));
+  tableBody.querySelectorAll('tr[draggable]').forEach((tr) => {
+    tr.addEventListener('dragstart', onDragStart);
+    tr.addEventListener('dragover', onDragOver);
+    tr.addEventListener('dragleave', onDragLeave);
+    tr.addEventListener('drop', onDrop);
+    tr.addEventListener('dragend', onDragEnd);
+  });
 }
 
 function daysUntilLocal(dateStr) {
@@ -171,20 +176,50 @@ function openStatusEditor(id) {
   });
 }
 
-// ---------- 위/아래 순서 이동 ----------
-function movePermit(id, dir) {
-  const list = sortedPermits();
-  const idx = list.findIndex((p) => p.id === id);
-  const j = idx + dir;
-  if (idx < 0 || j < 0 || j >= list.length) return;
+// ---------- 드래그로 순서 이동 ----------
+let dragId = null;
 
-  // 표시 순서 기준으로 sort_order를 재부여(중복 제거)한 뒤 이웃과 교환
+function onDragStart(e) {
+  dragId = e.currentTarget.dataset.id;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', dragId);
+  e.currentTarget.classList.add('dragging');
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  if (e.currentTarget.dataset.id !== dragId) e.currentTarget.classList.add('drag-over');
+}
+
+function onDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+
+function onDrop(e) {
+  e.preventDefault();
+  const targetId = e.currentTarget.dataset.id;
+  if (dragId && targetId && dragId !== targetId) reorderPermits(dragId, targetId);
+}
+
+function onDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+  tableBody.querySelectorAll('.drag-over').forEach((el) => el.classList.remove('drag-over'));
+  dragId = null;
+}
+
+function reorderPermits(dragId, targetId) {
+  const list = sortedPermits();
+  const from = list.findIndex((p) => p.id === dragId);
+  const to = list.findIndex((p) => p.id === targetId);
+  if (from < 0 || to < 0 || from === to) return;
+
+  const moved = list.splice(from, 1)[0];
+  const insertAt = from < to ? to - 1 : to;
+  list.splice(insertAt, 0, moved);
+
+  // 표시 순서 기준으로 sort_order 재부여
   list.forEach((p, i) => { p.sort_order = i * 10; });
-  const a = list[idx];
-  const b = list[j];
-  const tmp = a.sort_order;
-  a.sort_order = b.sort_order;
-  b.sort_order = tmp;
 
   postData('save_permits', { permits });
   render();

@@ -98,11 +98,10 @@ body {
   background: #fff; color: var(--text);
 }
 
-.move-btn {
-  background: none; border: none; cursor: pointer;
-  color: var(--blue); font-size: 12px; line-height: 1; padding: 2px 3px;
-}
-.move-btn:hover { color: var(--blue-light); }
+.drag-handle { cursor: grab; color: var(--blue); font-size: 14px; line-height: 1; padding: 2px 4px; display: inline-block; }
+.drag-handle:hover { color: var(--blue-light); }
+tr.dragging { opacity: 0.4; }
+tr.drag-over td { box-shadow: inset 0 2px 0 var(--blue); }
 
 .row-review td:not(.cat-cell) { background: #fff7d6; }
 .row-expired td:not(.cat-cell) { background: #fdecea; }
