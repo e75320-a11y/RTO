@@ -48,10 +48,13 @@ function sortedPermits() {
   return [...permits]
     .filter((p) => p.active !== false)
     .sort((a, b) => {
+      const ao = Number(a.sort_order ?? 0);
+      const bo = Number(b.sort_order ?? 0);
+      if (ao !== bo) return ao - bo;
       const ca = CATEGORY_ORDER.indexOf(a.category);
       const cb = CATEGORY_ORDER.indexOf(b.category);
       if (ca !== cb) return (ca < 0 ? 99 : ca) - (cb < 0 ? 99 : cb);
-      return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+      return String(a.description || '').localeCompare(String(b.description || ''));
     });
 }
 
@@ -59,7 +62,7 @@ function sortedPermits() {
 function render() {
   const list = sortedPermits();
   if (!list.length) {
-    tableBody.innerHTML = '<tr><td colspan="6" class="loading">등록된 인허가가 없습니다.</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="7" class="loading">등록된 인허가가 없습니다.</td></tr>';
     return;
   }
 
@@ -96,12 +99,15 @@ function render() {
       <td class="col-date">${formatDate(r.p.issue_date)}</td>
       <td class="col-date">${dueText}${dueExtra}</td>
       <td><span class="status-badge ${r.st} status-edit" data-status-id="${escapeHtml(r.p.id)}">${r.meta.kor}</span></td>
+      <td class="col-move"><button class="move-btn" data-up="${escapeHtml(r.p.id)}" title="위로 이동">▲</button><button class="move-btn" data-down="${escapeHtml(r.p.id)}" title="아래로 이동">▼</button></td>
     </tr>`;
   }).join('');
 
   tableBody.querySelectorAll('[data-status-id]').forEach((el) => {
     el.addEventListener('click', () => openStatusEditor(el.dataset.statusId));
   });
+  tableBody.querySelectorAll('[data-up]').forEach((b) => b.addEventListener('click', () => movePermit(b.dataset.up, -1)));
+  tableBody.querySelectorAll('[data-down]').forEach((b) => b.addEventListener('click', () => movePermit(b.dataset.down, 1)));
 }
 
 function daysUntilLocal(dateStr) {
@@ -163,6 +169,25 @@ function openStatusEditor(id) {
   select.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') finish();
   });
+}
+
+// ---------- 위/아래 순서 이동 ----------
+function movePermit(id, dir) {
+  const list = sortedPermits();
+  const idx = list.findIndex((p) => p.id === id);
+  const j = idx + dir;
+  if (idx < 0 || j < 0 || j >= list.length) return;
+
+  // 표시 순서 기준으로 sort_order를 재부여(중복 제거)한 뒤 이웃과 교환
+  list.forEach((p, i) => { p.sort_order = i * 10; });
+  const a = list[idx];
+  const b = list[j];
+  const tmp = a.sort_order;
+  a.sort_order = b.sort_order;
+  b.sort_order = tmp;
+
+  postData('save_permits', { permits });
+  render();
 }
 
 // ---------- 연결 상태 ----------
@@ -352,7 +377,7 @@ async function init() {
     await loadData();
     setConn(true);
   } catch (err) {
-    tableBody.innerHTML = `<tr><td colspan="6" class="loading">데이터 로드 실패: ${escapeHtml(err.message)}<br>sheets-config.js 의 Apps Script URL을 확인하세요.</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="7" class="loading">데이터 로드 실패: ${escapeHtml(err.message)}<br>sheets-config.js 의 Apps Script URL을 확인하세요.</td></tr>`;
     setConn(false);
   }
   // 항시 표시 대비 주기적 재조회
