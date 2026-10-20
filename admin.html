@@ -42,12 +42,14 @@
           <option>Localized Licenses/Permits</option>
         </select>
         <button class="btn" id="btn-notify">✉ 만료대상 알림메일 발송</button>
+        <button class="btn" id="btn-notify-selected">✉ 선택 항목 알림메일 발송</button>
         <span class="hint" id="notify-result"></span>
       </div>
       <div class="table-scroll">
         <table class="admin-table">
           <thead>
             <tr>
+              <th class="col-check"><input type="checkbox" id="check-all" title="전체 선택" /></th>
               <th>카테고리</th><th>인허가명</th><th>발급기관</th><th>발급일</th>
               <th>만료일</th><th>상태</th><th>담당자</th><th></th>
             </tr>
@@ -165,7 +167,7 @@
 
   <!-- 만료 알림 발송 확인 모달 -->
   <dialog id="notify-dialog">
-    <h2>만료대상 알림메일 발송</h2>
+    <h2 id="notify-dialog-title">만료대상 알림메일 발송</h2>
     <div id="notify-preview" class="notify-preview"></div>
     <div class="dialog-actions">
       <button type="button" class="btn" id="btn-notify-cancel">취소</button>

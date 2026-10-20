@@ -111,13 +111,15 @@ function renderPermits() {
   const list = sortedPermits().filter((p) => p.active !== false && (!filter || p.category === filter));
   const body = $('#permits-body');
   if (!list.length) {
-    body.innerHTML = '<tr><td colspan="8" style="color:#888">등록된 인허가가 없습니다.</td></tr>';
+    body.innerHTML = '<tr><td colspan="9" style="color:#888">등록된 인허가가 없습니다.</td></tr>';
     return;
   }
   body.innerHTML = list.map((p) => {
     const st = computeStatus(p, alertDays);
     const meta = STATUS_META[st] ?? STATUS_META.ok;
+    const hasEmail = !!(p.assignee_email || '').trim();
     return `<tr>
+      <td class="col-check"><input type="checkbox" class="permit-check" data-id="${p.id}" title="${hasEmail ? '선택' : '담당자 이메일 없음'}" ${hasEmail ? '' : 'disabled'} /></td>
       <td>${escapeHtml(p.category)}</td>
       <td>${escapeHtml(fullDesc(p))}</td>
       <td>${escapeHtml(p.issuing_agency || 'N/A')}</td>
@@ -489,6 +491,38 @@ async function triggerNotifications() {
     return;
   }
   resultEl.textContent = '';
+  openNotifyDialog('만료대상 알림메일 발송');
+}
+
+async function triggerSelectedNotifications() {
+  const resultEl = $('#notify-result');
+  const checked = [...document.querySelectorAll('.permit-check:checked')].map((c) => c.dataset.id);
+  if (!checked.length) {
+    resultEl.textContent = '선택한 항목이 없습니다. 인허가 목록에서 체크박스를 선택하세요.';
+    return;
+  }
+  notifyItems = permits
+    .filter((p) => checked.includes(p.id) && p.active !== false)
+    .map((p) => ({
+      permit_id: p.id,
+      description: fullDesc(p),
+      assignee_name: p.assignee_name || '',
+      assignee_email: p.assignee_email || '',
+      due_date: p.due_date || '',
+      days_left: daysUntil(p.due_date),
+      bucket: 'manual',
+    }));
+
+  if (!notifyItems.length) {
+    resultEl.textContent = '선택한 항목이 없습니다.';
+    return;
+  }
+  resultEl.textContent = '';
+  openNotifyDialog('선택 항목 알림메일 발송');
+}
+
+function openNotifyDialog(title) {
+  $('#notify-dialog-title').textContent = title;
   renderNotifyPreview();
   $('#notify-dialog').showModal();
 }
@@ -621,8 +655,12 @@ $('#btn-add').addEventListener('click', () => openDialog(null));
 $('#btn-cancel').addEventListener('click', () => $('#permit-dialog').close());
 $('#permit-form').addEventListener('submit', onSave);
 $('#btn-notify').addEventListener('click', triggerNotifications);
+$('#btn-notify-selected').addEventListener('click', triggerSelectedNotifications);
 $('#btn-notify-send').addEventListener('click', sendNotifications);
 $('#btn-notify-cancel').addEventListener('click', () => $('#notify-dialog').close());
+$('#check-all').addEventListener('change', () => {
+  document.querySelectorAll('.permit-check:not(:disabled)').forEach((c) => { c.checked = $('#check-all').checked; });
+});
 $('#filter-category').addEventListener('change', renderPermits);
 $('#due-none').addEventListener('change', () => {
   const dueInput = $('#permit-form').elements.due_date;
