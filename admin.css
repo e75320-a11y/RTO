@@ -97,8 +97,29 @@ body {
 .notify-summary { font-size: 13px; color: #444; margin-bottom: 8px; }
 .warn { color: var(--expired); font-weight: 700; }
 #notify-dialog { width: min(720px, 94vw); }
-.col-check { width: 34px; text-align: center; }
-.col-check input { cursor: pointer; }
+#selected-notify-dialog { width: min(760px, 94vw); }
+.selected-notify-scroll { max-height: 420px; overflow: auto; }
+.selected-notify-head {
+  position: sticky; top: 0; z-index: 1;
+  padding: 8px 12px; background: #f2f5f9; border-bottom: 1px solid var(--border);
+}
+.selected-notify-head .check-label {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; color: #444; cursor: pointer;
+}
+.selected-notify-list { display: flex; flex-direction: column; }
+.sel-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-bottom: 1px solid #eef1f4;
+  font-size: 13px; cursor: pointer;
+}
+.sel-item:hover { background: #f7fafd; }
+.sel-item.no-email { opacity: .6; cursor: not-allowed; }
+.sel-item input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; flex: none; }
+.sel-name { flex: 1; font-weight: 600; color: var(--text); }
+.sel-meta { color: #666; white-space: nowrap; }
+.sel-email { color: #888; font-size: 12px; white-space: nowrap; }
+.sel-empty { padding: 16px; color: #888; font-size: 13px; }
 dialog {
   border: none; border-radius: 10px; padding: 22px; width: min(640px, 92vw);
   box-shadow: 0 12px 40px rgba(0,0,0,.25);

@@ -111,15 +111,13 @@ function renderPermits() {
   const list = sortedPermits().filter((p) => p.active !== false && (!filter || p.category === filter));
   const body = $('#permits-body');
   if (!list.length) {
-    body.innerHTML = '<tr><td colspan="9" style="color:#888">등록된 인허가가 없습니다.</td></tr>';
+    body.innerHTML = '<tr><td colspan="8" style="color:#888">등록된 인허가가 없습니다.</td></tr>';
     return;
   }
   body.innerHTML = list.map((p) => {
     const st = computeStatus(p, alertDays);
     const meta = STATUS_META[st] ?? STATUS_META.ok;
-    const hasEmail = !!(p.assignee_email || '').trim();
     return `<tr>
-      <td class="col-check"><input type="checkbox" class="permit-check" data-id="${p.id}" title="${hasEmail ? '선택' : '담당자 이메일 없음'}" ${hasEmail ? '' : 'disabled'} /></td>
       <td>${escapeHtml(p.category)}</td>
       <td>${escapeHtml(fullDesc(p))}</td>
       <td>${escapeHtml(p.issuing_agency || 'N/A')}</td>
@@ -494,31 +492,117 @@ async function triggerNotifications() {
   openNotifyDialog('만료대상 알림메일 발송');
 }
 
-async function triggerSelectedNotifications() {
-  const resultEl = $('#notify-result');
-  const checked = [...document.querySelectorAll('.permit-check:checked')].map((c) => c.dataset.id);
-  if (!checked.length) {
-    resultEl.textContent = '선택한 항목이 없습니다. 인허가 목록에서 체크박스를 선택하세요.';
-    return;
-  }
-  notifyItems = permits
-    .filter((p) => checked.includes(p.id) && p.active !== false)
-    .map((p) => ({
-      permit_id: p.id,
-      description: fullDesc(p),
-      assignee_name: p.assignee_name || '',
-      assignee_email: p.assignee_email || '',
-      due_date: p.due_date || '',
-      days_left: daysUntil(p.due_date),
-      bucket: 'manual',
-    }));
+let selectedNotifyIds = new Set();
 
-  if (!notifyItems.length) {
-    resultEl.textContent = '선택한 항목이 없습니다.';
+function triggerSelectedNotifications() {
+  $('#notify-result').textContent = '';
+  renderSelectedNotifyList();
+  $('#selected-notify-dialog').showModal();
+}
+
+function renderSelectedNotifyList() {
+  const list = sortedPermits().filter((p) => p.active !== false);
+  const body = $('#selected-notify-list');
+
+  if (!list.length) {
+    body.innerHTML = '<div class="sel-empty">등록된 인허가 항목이 없습니다.</div>';
+    updateSelectedNotifySummary();
     return;
   }
-  resultEl.textContent = '';
-  openNotifyDialog('선택 항목 알림메일 발송');
+
+  body.innerHTML = list.map((p) => {
+    const email = (p.assignee_email || '').trim();
+    const hasEmail = !!email;
+    return `<div class="sel-item${hasEmail ? '' : ' no-email'}" data-id="${p.id}">
+      <input type="checkbox" class="sel-check" value="${p.id}"${hasEmail ? '' : ' disabled'} />
+      <span class="sel-name">${escapeHtml(fullDesc(p))}</span>
+      <span class="sel-meta">${escapeHtml(p.category || '')}</span>
+      <span class="sel-meta">${formatDate(p.due_date)}</span>
+      <span class="sel-email">${hasEmail ? escapeHtml(email) : '<span class="warn">이메일 없음</span>'}</span>
+    </div>`;
+  }).join('');
+
+  body.querySelectorAll('.sel-item').forEach((row) => {
+    const cb = row.querySelector('.sel-check');
+    cb.checked = selectedNotifyIds.has(cb.value);
+    cb.addEventListener('change', () => {
+      if (cb.checked) selectedNotifyIds.add(cb.value);
+      else selectedNotifyIds.delete(cb.value);
+      updateSelectedNotifySummary();
+      updateSelectedNotifyCheckAll();
+    });
+    row.addEventListener('click', (e) => {
+      if (e.target === cb) return;
+      if (cb.disabled) return;
+      cb.checked = !cb.checked;
+      cb.dispatchEvent(new Event('change'));
+    });
+  });
+
+  updateSelectedNotifyCheckAll();
+  updateSelectedNotifySummary();
+}
+
+function updateSelectedNotifyCheckAll() {
+  const boxes = [...document.querySelectorAll('#selected-notify-list .sel-check:not(:disabled)')];
+  const all = $('#selected-notify-check-all');
+  all.checked = boxes.length > 0 && boxes.every((c) => c.checked);
+}
+
+function updateSelectedNotifySummary() {
+  const selected = permits.filter((p) => p.active !== false && selectedNotifyIds.has(p.id));
+  const emails = new Set(selected.map((p) => (p.assignee_email || '').trim().toLowerCase()).filter(Boolean));
+  const missing = selected.filter((p) => !(p.assignee_email || '').trim()).length;
+  $('#selected-notify-summary').innerHTML =
+    `선택 <b>${selected.length}</b>건 · 담당자 <b>${emails.size}</b>명` +
+    (missing ? ` · <span class="warn">이메일 없음 ${missing}건</span>` : '');
+}
+
+async function sendSelectedNotifications() {
+  const resultEl = $('#notify-result');
+  const sendBtn = $('#btn-selected-notify-send');
+  const selected = permits.filter((p) => p.active !== false && selectedNotifyIds.has(p.id));
+
+  if (!selected.length) {
+    resultEl.textContent = '발송할 항목을 선택하세요.';
+    return;
+  }
+
+  const items = selected.map((p) => ({
+    permit_id: p.id,
+    description: fullDesc(p),
+    assignee_name: p.assignee_name || '',
+    assignee_email: p.assignee_email || '',
+    due_date: p.due_date || '',
+    days_left: daysUntil(p.due_date),
+    bucket: 'manual',
+  }));
+  const sendable = items.filter((it) => (it.assignee_email || '').trim());
+  if (!sendable.length) {
+    resultEl.textContent = '선택한 항목에 담당자 이메일이 없습니다. 항목별 담당자 이메일을 입력하세요.';
+    return;
+  }
+  const missing = items.length - sendable.length;
+
+  sendBtn.disabled = true;
+  sendBtn.textContent = '발송 중…';
+  try {
+    await postData('notify', {
+      site: settings.site_name || 'Pyungtek',
+      lead_email: settings.lead_email || '',
+      items: sendable,
+    });
+    $('#selected-notify-dialog').close();
+    selectedNotifyIds.clear();
+    resultEl.textContent = `요청 전송됨: ${sendable.length}건` +
+      (missing ? ` (이메일 없음 ${missing}건 제외)` : '') +
+      ' — Apps Script 실행 로그/알림로그에서 확인';
+  } catch (err) {
+    resultEl.textContent = '전송 실패: ' + err.message;
+  } finally {
+    sendBtn.disabled = false;
+    sendBtn.textContent = '메일알림 발송하기';
+  }
 }
 
 function openNotifyDialog(title) {
@@ -658,8 +742,16 @@ $('#btn-notify').addEventListener('click', triggerNotifications);
 $('#btn-notify-selected').addEventListener('click', triggerSelectedNotifications);
 $('#btn-notify-send').addEventListener('click', sendNotifications);
 $('#btn-notify-cancel').addEventListener('click', () => $('#notify-dialog').close());
-$('#check-all').addEventListener('change', () => {
-  document.querySelectorAll('.permit-check:not(:disabled)').forEach((c) => { c.checked = $('#check-all').checked; });
+$('#btn-selected-notify-send').addEventListener('click', sendSelectedNotifications);
+$('#btn-selected-notify-cancel').addEventListener('click', () => $('#selected-notify-dialog').close());
+$('#selected-notify-check-all').addEventListener('change', () => {
+  const on = $('#selected-notify-check-all').checked;
+  document.querySelectorAll('#selected-notify-list .sel-check:not(:disabled)').forEach((c) => {
+    c.checked = on;
+    if (on) selectedNotifyIds.add(c.value);
+    else selectedNotifyIds.delete(c.value);
+  });
+  updateSelectedNotifySummary();
 });
 $('#filter-category').addEventListener('change', renderPermits);
 $('#due-none').addEventListener('change', () => {

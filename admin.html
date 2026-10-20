@@ -49,7 +49,6 @@
         <table class="admin-table">
           <thead>
             <tr>
-              <th class="col-check"><input type="checkbox" id="check-all" title="전체 선택" /></th>
               <th>카테고리</th><th>인허가명</th><th>발급기관</th><th>발급일</th>
               <th>만료일</th><th>상태</th><th>담당자</th><th></th>
             </tr>
@@ -172,6 +171,23 @@
     <div class="dialog-actions">
       <button type="button" class="btn" id="btn-notify-cancel">취소</button>
       <button type="button" class="btn primary" id="btn-notify-send">알림 메일 발송하기</button>
+    </div>
+  </dialog>
+
+  <!-- 선택 항목 알림메일 발송 모달 -->
+  <dialog id="selected-notify-dialog">
+    <h2>선택 항목 알림메일 발송</h2>
+    <p class="hint">알림메일을 보낼 인허가 항목을 클릭해 선택하세요. 담당자 이메일이 등록된 항목만 발송됩니다.</p>
+    <div id="selected-notify-summary" class="notify-summary"></div>
+    <div class="table-scroll selected-notify-scroll">
+      <div class="selected-notify-head">
+        <label class="check-label"><input type="checkbox" id="selected-notify-check-all" /> 전체 선택</label>
+      </div>
+      <div id="selected-notify-list" class="selected-notify-list"></div>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" class="btn" id="btn-selected-notify-cancel">취소</button>
+      <button type="button" class="btn primary" id="btn-selected-notify-send">메일알림 발송하기</button>
     </div>
   </dialog>
 
