@@ -232,7 +232,8 @@ async function applyChange(action, permitId, data, byName, byEmail) {
   let pid = permitId;
   if (action === 'create') {
     pid = newId();
-    permits.push({ id: pid, active: true, ...data });
+    const maxSort = permits.reduce((m, p) => Math.max(m, Number(p.sort_order || 0)), 0);
+    permits.push({ id: pid, active: true, ...data, sort_order: maxSort + 10 });
   } else if (action === 'update') {
     const p = permits.find((x) => x.id === pid);
     if (p) Object.assign(p, data);

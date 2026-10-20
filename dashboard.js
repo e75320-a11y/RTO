@@ -73,18 +73,13 @@ function render() {
     rows.push({ p, st, meta, cat: p.category });
   }
 
-  // 카테고리 rowspan 계산
-  const catCounts = {};
-  for (const r of rows) catCounts[r.cat] = (catCounts[r.cat] || 0) + 1;
-  const firstIdx = {};
+  // 카테고리 rowspan 계산 (연속된 같은 카테고리 블록 단위로 계산)
   for (let i = 0; i < rows.length; i++) {
-    const r = rows[i];
-    if (!(r.cat in firstIdx)) {
-      firstIdx[r.cat] = i;
-      r.catCell = `<td class="cat-cell" rowspan="${catCounts[r.cat]}">${escapeHtml(r.cat)}</td>`;
-    } else {
-      r.catCell = '';
-    }
+    let run = 1;
+    while (i + run < rows.length && rows[i + run].cat === rows[i].cat) run++;
+    rows[i].catCell = `<td class="cat-cell" rowspan="${run}">${escapeHtml(rows[i].cat)}</td>`;
+    for (let k = 1; k < run; k++) rows[i + k].catCell = '';
+    i += run - 1;
   }
 
   tableBody.innerHTML = rows.map((r) => {
