@@ -62,6 +62,10 @@ body {
 /* ---------- 테이블 ---------- */
 .table-wrap { flex: 1; overflow: auto; padding: 0 20px 10px; }
 
+/* 전체화면에서 스크롤 없이 한 화면에 맞추기 위한 스케일 박스 */
+#scale-box { transform-origin: top center; }
+body:fullscreen .table-wrap { overflow: hidden; }
+
 .rto-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .rto-table th {
   background: var(--blue); color: #fff; font-weight: 700;

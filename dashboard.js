@@ -108,6 +108,8 @@ function render() {
     tr.addEventListener('drop', onDrop);
     tr.addEventListener('dragend', onDragEnd);
   });
+
+  fitToScreen();
 }
 
 function daysUntilLocal(dateStr) {
@@ -397,6 +399,40 @@ document.getElementById('btn-fullscreen').addEventListener('click', () => {
     document.exitFullscreen?.();
   }
 });
+
+// ---------- 화면 맞춤: 전체화면에서 스크롤 없이 한 화면에 표시 ----------
+function fitToScreen() {
+  const wrap = document.getElementById('table-wrap');
+  const box = document.getElementById('scale-box');
+  if (!wrap || !box) return;
+
+  const isFs = !!document.fullscreenElement;
+
+  if (!isFs) {
+    box.style.transform = '';
+    wrap.style.overflow = 'auto';
+    return;
+  }
+
+  // 자연 크기 측정을 위해 기존 변형을 초기화
+  box.style.transform = '';
+  wrap.style.overflow = 'hidden';
+
+  const cs = getComputedStyle(wrap);
+  const availW = wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const availH = wrap.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+
+  const contentW = box.scrollWidth || box.offsetWidth;
+  const contentH = box.offsetHeight;
+  if (!contentW || !contentH) return;
+
+  const scale = Math.min(1, availW / contentW, availH / contentH);
+  box.style.transform = 'scale(' + scale + ')';
+}
+
+window.addEventListener('resize', fitToScreen);
+document.addEventListener('fullscreenchange', fitToScreen);
+
 document.getElementById('btn-pptx').addEventListener('click', exportPptx);
 contactEl.addEventListener('click', editContactName);
 btnEditContact.addEventListener('click', editContactName);
