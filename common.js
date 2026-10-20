@@ -5,6 +5,7 @@ export const STATUS_META = {
   ok: { kor: '최신 상태', eng: 'Up to date', color: '#2e9e44' },
   review: { kor: '갱신·검토 중', eng: 'Under renew / review', color: '#f5b400' },
   expired: { kor: '만료', eng: 'Out of date', color: '#d93025' },
+  none: { kor: '해당 없음', eng: 'Not applicable', color: '#ffffff' },
 };
 
 export function parseDate(dateStr) {

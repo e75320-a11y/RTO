@@ -45,12 +45,14 @@ async function loadData() {
 }
 
 function sortedPermits() {
-  return [...permits].sort((a, b) => {
-    const ca = CATEGORY_ORDER.indexOf(a.category);
-    const cb = CATEGORY_ORDER.indexOf(b.category);
-    if (ca !== cb) return (ca < 0 ? 99 : ca) - (cb < 0 ? 99 : cb);
-    return (a.sort_order ?? 0) - (b.sort_order ?? 0);
-  });
+  return [...permits]
+    .filter((p) => p.active !== false)
+    .sort((a, b) => {
+      const ca = CATEGORY_ORDER.indexOf(a.category);
+      const cb = CATEGORY_ORDER.indexOf(b.category);
+      if (ca !== cb) return (ca < 0 ? 99 : ca) - (cb < 0 ? 99 : cb);
+      return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+    });
 }
 
 // ---------- 렌더링 ----------
@@ -106,6 +108,9 @@ function daysUntilLocal(dateStr) {
 }
 
 function displayStatus(p) {
+  if (p.status_override === 'ok' || p.status_override === 'review' || p.status_override === 'expired' || p.status_override === 'none') {
+    return p.status_override;
+  }
   if (!p.due_date) return 'none';
   const days = daysUntilLocal(p.due_date);
   if (days === null) return 'none';
