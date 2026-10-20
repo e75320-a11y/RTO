@@ -41,7 +41,7 @@
           <option>Mandated Licenses/Permits</option>
           <option>Localized Licenses/Permits</option>
         </select>
-        <button class="btn" id="btn-notify">✉ 지금 만료 알림 발송</button>
+        <button class="btn" id="btn-notify">✉ 만료대상 알림메일 발송</button>
         <span class="hint" id="notify-result"></span>
       </div>
       <div class="table-scroll">
@@ -161,6 +161,16 @@
         <button type="submit" class="btn primary" id="btn-save">저장</button>
       </div>
     </form>
+  </dialog>
+
+  <!-- 만료 알림 발송 확인 모달 -->
+  <dialog id="notify-dialog">
+    <h2>만료대상 알림메일 발송</h2>
+    <div id="notify-preview" class="notify-preview"></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn" id="btn-notify-cancel">취소</button>
+      <button type="button" class="btn primary" id="btn-notify-send">알림 메일 발송하기</button>
+    </div>
   </dialog>
 
   <script type="module" src="admin.js"></script>

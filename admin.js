@@ -467,10 +467,12 @@ async function rejectRequest(req) {
 }
 
 // ---------- 만료 알림 ----------
+let notifyItems = [];
+
 async function triggerNotifications() {
   const resultEl = $('#notify-result');
   const due = permits.filter((p) => p.active !== false && p.due_date && p.assignee_email);
-  const items = due
+  notifyItems = due
     .filter((p) => ['review', 'expired'].includes(computeStatus(p, alertDays)))
     .map((p) => ({
       permit_id: p.id,
@@ -482,21 +484,58 @@ async function triggerNotifications() {
       bucket: notificationBucket(p.due_date, reminderBuckets) || 'manual',
     }));
 
-  if (!items.length) {
+  if (!notifyItems.length) {
     resultEl.textContent = '현재 만료 알림 대상이 없습니다.';
     return;
   }
+  resultEl.textContent = '';
+  renderNotifyPreview();
+  $('#notify-dialog').showModal();
+}
 
-  resultEl.textContent = '전송 중…';
+function daysLeftText(d) {
+  if (d === null || d === undefined || isNaN(Number(d))) return '';
+  return Number(d) < 0 ? `D+${-Number(d)} (만료)` : `D-${Number(d)}`;
+}
+
+function renderNotifyPreview() {
+  const emails = new Set(notifyItems.map((it) => (it.assignee_email || '').trim().toLowerCase()).filter(Boolean));
+  const rows = notifyItems.map((it) => `<tr>
+    <td>${escapeHtml(it.description)}</td>
+    <td>${escapeHtml(it.assignee_name || '-')}<br><small>${escapeHtml(it.assignee_email || '')}</small></td>
+    <td>${escapeHtml(it.due_date || '')}</td>
+    <td>${daysLeftText(it.days_left)}</td>
+  </tr>`).join('');
+
+  $('#notify-preview').innerHTML = `
+    <p class="notify-summary">총 <b>${notifyItems.length}</b>건 · 대상 담당자 <b>${emails.size}</b>명</p>
+    <div class="table-scroll" style="max-height: 320px;">
+      <table class="admin-table">
+        <thead><tr><th>인허가명</th><th>담당자</th><th>만료일</th><th>남은기간</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+async function sendNotifications() {
+  const resultEl = $('#notify-result');
+  const sendBtn = $('#btn-notify-send');
+  if (!notifyItems.length) return;
+  sendBtn.disabled = true;
+  sendBtn.textContent = '발송 중…';
   try {
     await postData('notify', {
       site: settings.site_name || 'Pyungtek',
       lead_email: settings.lead_email || '',
-      items,
+      items: notifyItems,
     });
-    resultEl.textContent = `요청 전송됨: ${items.length}건 (Apps Script 실행 로그/알림로그에서 확인)`;
+    $('#notify-dialog').close();
+    resultEl.textContent = `요청 전송됨: ${notifyItems.length}건 (Apps Script 실행 로그/알림로그에서 확인)`;
   } catch (err) {
     resultEl.textContent = '전송 실패: ' + err.message;
+  } finally {
+    sendBtn.disabled = false;
+    sendBtn.textContent = '알림 메일 발송하기';
   }
 }
 
@@ -574,6 +613,8 @@ $('#btn-add').addEventListener('click', () => openDialog(null));
 $('#btn-cancel').addEventListener('click', () => $('#permit-dialog').close());
 $('#permit-form').addEventListener('submit', onSave);
 $('#btn-notify').addEventListener('click', triggerNotifications);
+$('#btn-notify-send').addEventListener('click', sendNotifications);
+$('#btn-notify-cancel').addEventListener('click', () => $('#notify-dialog').close());
 $('#filter-category').addEventListener('change', renderPermits);
 $('#due-none').addEventListener('change', () => {
   const dueInput = $('#permit-form').elements.due_date;
