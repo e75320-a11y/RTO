@@ -22,6 +22,11 @@ let changeLog = [];
 let alertDays = 60;
 let reminderBuckets = [60, 30, 14, 7];
 
+// 중복 클릭 방지
+let savingPermit = false;
+const processingRequests = new Set();
+const deletingPermits = new Set();
+
 const user = {
   get name() { return document.getElementById('user-name').value.trim(); },
   get email() { return document.getElementById('user-email').value.trim(); },
@@ -255,6 +260,7 @@ async function applyChange(action, permitId, data, byName, byEmail) {
 function openDialog(permit) {
   const form = $('#permit-form');
   form.reset();
+  $('#btn-save').disabled = false;
   $('#dialog-title').textContent = permit ? '인허가 수정' : '새 인허가 등록';
   form.elements.id.value = permit?.id || '';
   if (permit) {
@@ -321,12 +327,17 @@ function formToPayload(form) {
 
 async function onSave(e) {
   e.preventDefault();
+  if (savingPermit) return;
   const form = $('#permit-form');
   const payload = formToPayload(form);
   if (!payload.description) { alert('인허가명(한글)은 필수입니다.'); return; }
   const id = form.elements.id.value || null;
   const note = form.elements.note?.value || '';
   const action = id ? 'update' : 'create';
+
+  const btn = $('#btn-save');
+  savingPermit = true;
+  btn.disabled = true;
   try {
     if (isLead()) {
       await applyChange(action, id, payload, user.name, user.email);
@@ -361,14 +372,19 @@ async function onSave(e) {
     await refreshAll();
   } catch (err) {
     alert('저장 실패: ' + err.message);
+  } finally {
+    savingPermit = false;
+    btn.disabled = false;
   }
 }
 
 async function requestDelete(permit) {
   if (!permit) return;
-  if (!confirm(`"${fullDesc(permit)}" 항목을 삭제 요청할까요?`)) return;
-  const payload = { description: permit.description, description_en: permit.description_en };
+  if (deletingPermits.has(permit.id)) return;
+  deletingPermits.add(permit.id);
   try {
+    if (!confirm(`"${fullDesc(permit)}" 항목을 삭제 요청할까요?`)) return;
+    const payload = { description: permit.description, description_en: permit.description_en };
     if (isLead()) {
       await applyChange('delete', permit.id, payload, user.name, user.email);
       alert('삭제되었습니다.');
@@ -401,11 +417,15 @@ async function requestDelete(permit) {
     await refreshAll();
   } catch (err) {
     alert('삭제 실패: ' + err.message);
+  } finally {
+    deletingPermits.delete(permit.id);
   }
 }
 
 // ---------- 승인/거절 ----------
 async function approveRequest(req) {
+  if (!req || processingRequests.has(req.id)) return;
+  processingRequests.add(req.id);
   try {
     await applyChange(req.action, req.permit_id, req.proposed_data || {}, req.requested_by, req.requested_by_email);
     const r = changeRequests.find((x) => x.id === req.id);
@@ -418,13 +438,17 @@ async function approveRequest(req) {
     await refreshAll();
   } catch (err) {
     alert('승인 처리 실패: ' + err.message);
+  } finally {
+    processingRequests.delete(req.id);
   }
 }
 
 async function rejectRequest(req) {
-  const reason = prompt('거절 사유를 입력하세요:', '');
-  if (reason === null) return;
+  if (!req || processingRequests.has(req.id)) return;
+  processingRequests.add(req.id);
   try {
+    const reason = prompt('거절 사유를 입력하세요:', '');
+    if (reason === null) return;
     const r = changeRequests.find((x) => x.id === req.id);
     if (r) {
       r.status = 'rejected';
@@ -436,6 +460,8 @@ async function rejectRequest(req) {
     await refreshAll();
   } catch (err) {
     alert('거절 처리 실패: ' + err.message);
+  } finally {
+    processingRequests.delete(req.id);
   }
 }
 
