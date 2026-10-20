@@ -5,7 +5,7 @@
 // - 담당자/설정 관리
 // - 만료 알림 수동 발송(Google Apps Script 연동)
 // ============================================================================
-import { supabase } from './supabase-config.js';
+import { loadAppData, postData } from './sheets.js';
 import {
   STATUS_META, computeStatus, formatDate, fullDesc, escapeHtml,
   daysUntil, notificationBucket,
@@ -17,6 +17,8 @@ const ACTION_LABEL = { create: '등록', update: '수정', delete: '삭제' };
 let settings = {};
 let permits = [];
 let assignees = [];
+let changeRequests = [];
+let changeLog = [];
 let alertDays = 60;
 let reminderBuckets = [60, 30, 14, 7];
 
@@ -26,6 +28,12 @@ const user = {
 };
 
 const $ = (sel) => document.querySelector(sel);
+const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function newId() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+}
 
 // ---------- 유저 식별 ----------
 function loadUser() {
@@ -50,35 +58,37 @@ function updateRoleBadge() {
 }
 
 // ---------- 로드 ----------
-async function loadSettings() {
-  const { data, error } = await supabase.from('settings').select('*');
-  const banner = $('#conn-banner');
-  if (error) { banner.hidden = false; return; }
-  banner.hidden = true;
-  if (data) settings = Object.fromEntries(data.map((r) => [r.key, r.value]));
+async function loadAll() {
+  const data = await loadAppData();
+  settings = data.settings || {};
+  permits = data.permits || [];
+  changeRequests = data.change_requests || [];
+  changeLog = data.change_log || [];
+  deriveAssignees();
+
   alertDays = parseInt(settings.alert_days ?? '60', 10) || 60;
   reminderBuckets = String(settings.reminder_buckets ?? '60,30,14,7')
     .split(',').map((x) => parseInt(x, 10)).filter((n) => !isNaN(n));
+
+  const banner = $('#conn-banner');
+  banner.hidden = true;
   updateRoleBadge();
   fillSettingsForm();
-}
-async function loadPermits() {
-  const { data, error } = await supabase.from('permits').select('*').order('sort_order', { ascending: true });
-  if (!error) permits = data ?? [];
   renderPermits();
-}
-async function loadAssignees() {
-  const { data, error } = await supabase.from('assignees').select('*').order('created_at', { ascending: true });
-  if (!error) assignees = data ?? [];
+  renderChangeRequests(changeRequests);
+  renderChangeLog(changeLog);
   renderAssignees();
 }
-async function loadChangeRequests() {
-  const { data, error } = await supabase.from('change_requests').select('*').order('created_at', { ascending: false });
-  if (!error) renderChangeRequests(data ?? []);
-}
-async function loadChangeLog() {
-  const { data, error } = await supabase.from('change_log').select('*').order('created_at', { ascending: false }).limit(200);
-  if (!error) renderChangeLog(data ?? []);
+
+function deriveAssignees() {
+  const map = new Map();
+  for (const p of permits) {
+    const email = (p.assignee_email || '').trim().toLowerCase();
+    const name = (p.assignee_name || '').trim();
+    if (!email) continue;
+    if (!map.has(email)) map.set(email, { id: email, name: name || email, email, role: 'member' });
+  }
+  assignees = [...map.values()];
 }
 
 // ---------- 렌더: 인허가 목록 ----------
@@ -191,40 +201,53 @@ function summarizeDetails(action, d) {
 function renderAssignees() {
   const body = $('#assignees-body');
   if (!assignees.length) {
-    body.innerHTML = '<tr><td colspan="4" style="color:#888">등록된 담당자가 없습니다.</td></tr>';
+    body.innerHTML = '<tr><td colspan="3" style="color:#888">등록된 담당자가 없습니다.</td></tr>';
     return;
   }
+  const leadEmail = (settings.lead_email || '').trim().toLowerCase();
   body.innerHTML = assignees.map((a) => `<tr>
     <td>${escapeHtml(a.name)}</td>
     <td>${escapeHtml(a.email)}</td>
-    <td>${a.role === 'lead' ? '팀장' : '일반'}</td>
-    <td><button class="btn small danger" data-del-assignee="${a.id}">삭제</button></td>
+    <td>${a.email === leadEmail ? '팀장' : '일반'}</td>
   </tr>`).join('');
-  body.querySelectorAll('[data-del-assignee]').forEach((b) => b.addEventListener('click', async () => {
-    if (!confirm('담당자를 삭제할까요?')) return;
-    await supabase.from('assignees').delete().eq('id', b.dataset.delAssignee);
-    await loadAssignees();
-  }));
 }
 
-// ---------- 변경 적용 (직접 반영 + 이력 기록) ----------
+// ---------- 변경 적용 (메모리 반영 + 시트 저장) ----------
+function persistPermits() { return postData('save_permits', { permits }); }
+function persistSettings() { return postData('save_settings', { settings }); }
+function persistChangeRequests() { return postData('save_change_requests', { change_requests: changeRequests }); }
+function persistChangeLog() { return postData('save_change_log', { change_log: changeLog }); }
+
+async function refreshAll() {
+  await delay(700); // no-cors 요청이 서버에 반영될 시간 확보
+  await loadAll();
+}
+
 async function applyChange(action, permitId, data, byName, byEmail) {
   let pid = permitId;
   if (action === 'create') {
-    const { data: created, error } = await supabase.from('permits').insert(data).select().single();
-    if (error) throw error;
-    pid = created.id;
+    pid = newId();
+    permits.push({ id: pid, active: true, ...data });
   } else if (action === 'update') {
-    const { error } = await supabase.from('permits').update(data).eq('id', pid);
-    if (error) throw error;
+    const p = permits.find((x) => x.id === pid);
+    if (p) Object.assign(p, data);
   } else if (action === 'delete') {
-    const { error } = await supabase.from('permits').update({ active: false }).eq('id', pid);
-    if (error) throw error;
+    const p = permits.find((x) => x.id === pid);
+    if (p) p.active = false;
   }
-  await supabase.from('change_log').insert({
-    permit_id: pid, action, details: data,
-    changed_by: byName, changed_by_email: byEmail,
+
+  changeLog.unshift({
+    id: newId(),
+    permit_id: pid,
+    action,
+    details: data,
+    changed_by: byName,
+    changed_by_email: byEmail,
+    created_at: new Date().toISOString(),
   });
+
+  await persistPermits();
+  await persistChangeLog();
   return pid;
 }
 
@@ -299,15 +322,22 @@ async function onSave(e) {
       await applyChange(action, id, payload, user.name, user.email);
       alert('변경이 즉시 반영되었습니다.');
     } else {
-      await supabase.from('change_requests').insert({
-        permit_id: id, action, proposed_data: payload,
-        requested_by: user.name, requested_by_email: user.email,
-        note, status: 'pending',
+      changeRequests.unshift({
+        id: newId(),
+        permit_id: id,
+        action,
+        proposed_data: payload,
+        requested_by: user.name,
+        requested_by_email: user.email,
+        note,
+        status: 'pending',
+        created_at: new Date().toISOString(),
       });
+      await persistChangeRequests();
       alert('팀장 승인 요청이 등록되었습니다.');
     }
     $('#permit-dialog').close();
-    await Promise.all([loadPermits(), loadChangeRequests(), loadChangeLog()]);
+    await refreshAll();
   } catch (err) {
     alert('저장 실패: ' + err.message);
   }
@@ -322,13 +352,21 @@ async function requestDelete(permit) {
       await applyChange('delete', permit.id, payload, user.name, user.email);
       alert('삭제되었습니다.');
     } else {
-      await supabase.from('change_requests').insert({
-        permit_id: permit.id, action: 'delete', proposed_data: payload,
-        requested_by: user.name, requested_by_email: user.email, status: 'pending',
+      changeRequests.unshift({
+        id: newId(),
+        permit_id: permit.id,
+        action: 'delete',
+        proposed_data: payload,
+        requested_by: user.name,
+        requested_by_email: user.email,
+        note: '',
+        status: 'pending',
+        created_at: new Date().toISOString(),
       });
+      await persistChangeRequests();
       alert('팀장 삭제 승인 요청이 등록되었습니다.');
     }
-    await Promise.all([loadPermits(), loadChangeRequests(), loadChangeLog()]);
+    await refreshAll();
   } catch (err) {
     alert('삭제 실패: ' + err.message);
   }
@@ -338,10 +376,14 @@ async function requestDelete(permit) {
 async function approveRequest(req) {
   try {
     await applyChange(req.action, req.permit_id, req.proposed_data || {}, req.requested_by, req.requested_by_email);
-    await supabase.from('change_requests').update({
-      status: 'approved', reviewed_by: user.name, reviewed_at: new Date().toISOString(),
-    }).eq('id', req.id);
-    await Promise.all([loadPermits(), loadChangeRequests(), loadChangeLog()]);
+    const r = changeRequests.find((x) => x.id === req.id);
+    if (r) {
+      r.status = 'approved';
+      r.reviewed_by = user.name;
+      r.reviewed_at = new Date().toISOString();
+    }
+    await persistChangeRequests();
+    await refreshAll();
   } catch (err) {
     alert('승인 처리 실패: ' + err.message);
   }
@@ -351,10 +393,15 @@ async function rejectRequest(req) {
   const reason = prompt('거절 사유를 입력하세요:', '');
   if (reason === null) return;
   try {
-    await supabase.from('change_requests').update({
-      status: 'rejected', reject_reason: reason, reviewed_by: user.name, reviewed_at: new Date().toISOString(),
-    }).eq('id', req.id);
-    await loadChangeRequests();
+    const r = changeRequests.find((x) => x.id === req.id);
+    if (r) {
+      r.status = 'rejected';
+      r.reject_reason = reason;
+      r.reviewed_by = user.name;
+      r.reviewed_at = new Date().toISOString();
+    }
+    await persistChangeRequests();
+    await refreshAll();
   } catch (err) {
     alert('거절 처리 실패: ' + err.message);
   }
@@ -362,12 +409,7 @@ async function rejectRequest(req) {
 
 // ---------- 만료 알림 ----------
 async function triggerNotifications() {
-  const url = (settings.apps_script_url || '').trim();
   const resultEl = $('#notify-result');
-  if (!url) {
-    alert('설정 탭에서 Google Apps Script Web App URL을 먼저 입력하세요.');
-    return;
-  }
   const due = permits.filter((p) => p.active !== false && p.due_date && p.assignee_email);
   const items = due
     .filter((p) => ['review', 'expired'].includes(computeStatus(p, alertDays)))
@@ -388,29 +430,12 @@ async function triggerNotifications() {
 
   resultEl.textContent = '전송 중…';
   try {
-    // Apps Script 는 CORS 제한이 있어 no-cors(수신 확인 불가)로 전송합니다.
-    await fetch(url, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({
-        site: settings.site_name || 'Pyungtek',
-        lead_email: settings.lead_email || '',
-        items,
-      }),
+    await postData('notify', {
+      site: settings.site_name || 'Pyungtek',
+      lead_email: settings.lead_email || '',
+      items,
     });
-    // 발송 이력 기록
-    const rows = items
-      .filter((it) => it.permit_id)
-      .map((it) => ({
-        permit_id: it.permit_id,
-        due_date: it.due_date,
-        bucket: it.bucket,
-        sent_to: it.assignee_email,
-        result: 'sent',
-      }));
-    if (rows.length) await supabase.from('notifications').insert(rows);
-    resultEl.textContent = `요청 전송됨: ${items.length}건 (Apps Script 실행 로그에서 발송 확인)`;
+    resultEl.textContent = `요청 전송됨: ${items.length}건 (Apps Script 실행 로그/알림로그에서 확인)`;
   } catch (err) {
     resultEl.textContent = '전송 실패: ' + err.message;
   }
@@ -430,14 +455,16 @@ async function onSaveSettings(e) {
   const resultEl = $('#settings-result');
   resultEl.textContent = '저장 중…';
   try {
+    const next = {};
     for (const el of form.elements) {
       if (!el.name) continue;
-      const { error } = await supabase.from('settings').upsert({ key: el.name, value: el.value }, { onConflict: 'key' });
-      if (error) throw error;
+      next[el.name] = el.value;
     }
-    await loadSettings();
+    settings = next;
+    await persistSettings();
     resultEl.textContent = '저장 완료';
     setTimeout(() => { resultEl.textContent = ''; }, 2000);
+    await refreshAll();
   } catch (err) {
     resultEl.textContent = '저장 실패: ' + err.message;
   }
@@ -459,16 +486,6 @@ $('#btn-cancel').addEventListener('click', () => $('#permit-dialog').close());
 $('#permit-form').addEventListener('submit', onSave);
 $('#btn-notify').addEventListener('click', triggerNotifications);
 $('#filter-category').addEventListener('change', renderPermits);
-$('#btn-add-assignee').addEventListener('click', async () => {
-  const name = $('#a-name').value.trim();
-  const email = $('#a-email').value.trim();
-  const role = $('#a-role').value;
-  if (!name || !email) { alert('이름과 이메일을 입력하세요.'); return; }
-  const { error } = await supabase.from('assignees').insert({ name, email, role });
-  if (error) { alert('담당자 추가 실패: ' + error.message); return; }
-  $('#a-name').value = ''; $('#a-email').value = '';
-  await loadAssignees();
-});
 $('#settings-form').addEventListener('submit', onSaveSettings);
 $('#user-name').addEventListener('change', saveUser);
 $('#user-email').addEventListener('change', saveUser);
@@ -481,25 +498,18 @@ function formatDateTime(iso) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-// ---------- 실시간 ----------
-function subscribe() {
-  supabase.channel('rto-admin')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'permits' }, () => loadPermits().catch(() => {}))
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'change_requests' }, () => { loadChangeRequests(); loadChangeLog(); })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'change_log' }, () => loadChangeLog())
-    .subscribe();
-}
-
 // ---------- 시작 ----------
 async function init() {
   loadUser();
   try {
-    await Promise.all([loadSettings(), loadPermits(), loadAssignees(), loadChangeRequests(), loadChangeLog()]);
+    await loadAll();
   } catch (err) {
-    alert('초기 로드 실패: ' + err.message + '\nsupabase-config.js 의 URL/키를 확인하세요.');
+    $('#conn-banner').hidden = false;
+    alert('초기 로드 실패: ' + err.message + '\nsheets-config.js 의 Apps Script URL을 확인하세요.');
     return;
   }
-  subscribe();
+  // 다른 탭에서 바뀐 내용을 주기적으로 반영
+  setInterval(() => loadAll().catch(() => { $('#conn-banner').hidden = false; }), 60 * 1000);
 }
 
 init();

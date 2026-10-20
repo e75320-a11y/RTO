@@ -1,11 +1,11 @@
 // ============================================================================
 // RTO 디스플레이 대시보드
 // - 항시 표시용 전체화면 대시보드
-// - Supabase Realtime 으로 변경 즉시 자동 갱신
+// - Google Apps Script(구글 시트)에서 데이터 로드, 주기적 자동 갱신
 // - 만료일 기반 상태 자동 계산 (미만료=초록 / 갱신중=노랑 / 만료=빨강 / 해당없음=흰색)
 // - PPTX(PowerPoint) 파일 내보내기
 // ============================================================================
-import { supabase, SUPABASE_URL_VALUE } from './supabase-config.js';
+import { loadAppData, postData } from './sheets.js';
 import {
   formatDate, fullDesc, escapeHtml,
 } from './common.js';
@@ -30,28 +30,17 @@ const contactEl = document.getElementById('contact-name');
 const contactEditor = document.getElementById('contact-name').parentElement;
 const btnEditContact = document.getElementById('btn-edit-contact');
 
-// ---------- 설정 로드 ----------
-async function loadSettings() {
-  const { data, error } = await supabase.from('settings').select('*');
-  if (!error && data) {
-    settings = Object.fromEntries(data.map((r) => [r.key, r.value]));
-  }
+// ---------- 데이터 로드 ----------
+async function loadData() {
+  const data = await loadAppData();
+  settings = data.settings || {};
+  permits = data.permits || [];
   alertDays = parseInt(settings.alert_days ?? '60', 10) || 60;
+
   const site = settings.site_name || 'Pyungtek';
   document.getElementById('site-name').textContent = site ? `(${site})` : '';
   document.getElementById('site-title').textContent = settings.title || 'Right To Operate Permits and Licenses';
   setContactName(settings.contact || 'Inhee Park');
-}
-
-// ---------- 데이터 로드 ----------
-async function loadPermits() {
-  const { data, error } = await supabase
-    .from('permits')
-    .select('*')
-    .eq('active', true)
-    .order('sort_order', { ascending: true });
-  if (error) throw error;
-  permits = data ?? [];
   render();
 }
 
@@ -125,20 +114,7 @@ function displayStatus(p) {
   return 'ok';
 }
 
-// ---------- 실시간 구독 ----------
-function subscribe() {
-  const channel = supabase
-    .channel('rto-permits')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'permits' }, () => {
-      loadPermits().catch(console.error);
-    })
-    .subscribe((status) => {
-      if (status === 'SUBSCRIBED') setConn(true);
-      else setConn(false);
-    });
-  return channel;
-}
-
+// ---------- 연결 상태 ----------
 function setConn(on) {
   connEl.textContent = on ? '● 연결됨' : '○ 연결 끊김';
   connEl.className = 'conn ' + (on ? 'on' : 'off');
@@ -282,12 +258,9 @@ function editContactName() {
     saving = true;
     input.disabled = true;
     try {
-      const { error } = await supabase
-        .from('settings')
-        .upsert({ key: 'contact', value: name }, { onConflict: 'key' });
-      if (error) throw error;
       settings.contact = name;
       setContactName(name);
+      postData('save_settings', { settings });
     } catch (err) {
       alert('연락처 저장 실패: ' + err.message);
       setContactName(current);
@@ -325,15 +298,21 @@ btnEditContact.addEventListener('click', editContactName);
 // ---------- 시작 ----------
 async function init() {
   try {
-    await Promise.all([loadSettings(), loadPermits()]);
+    await loadData();
+    setConn(true);
   } catch (err) {
-    tableBody.innerHTML = `<tr><td colspan="6" class="loading">데이터 로드 실패: ${escapeHtml(err.message)}<br>supabase-config.js 의 URL/키를 확인하세요.</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="6" class="loading">데이터 로드 실패: ${escapeHtml(err.message)}<br>sheets-config.js 의 Apps Script URL을 확인하세요.</td></tr>`;
     setConn(false);
-    return;
   }
-  subscribe();
-  // 항시 표시 대비 주기적 재조회(실시간 연결이 끊겨도 복구)
-  setInterval(() => loadPermits().catch(() => {}), 5 * 60 * 1000);
+  // 항시 표시 대비 주기적 재조회
+  setInterval(async () => {
+    try {
+      await loadData();
+      setConn(true);
+    } catch (e) {
+      setConn(false);
+    }
+  }, 60 * 1000);
 }
 
 init();

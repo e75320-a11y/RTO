@@ -21,7 +21,7 @@
     </div>
   </header>
 
-  <div id="conn-banner" class="conn-banner" hidden>⚠ Supabase 연결 실패 — [supabase-config.js](supabase-config.js) 의 URL / anon 키를 확인하세요.</div>
+  <div id="conn-banner" class="conn-banner" hidden>⚠ Apps Script 연결 실패 — [sheets-config.js](sheets-config.js) 의 Web App URL을 확인하세요.</div>
 
   <nav class="tabs">
     <button class="tab active" data-tab="permits">인허가 목록</button>
@@ -84,15 +84,10 @@
 
     <!-- 담당자 -->
     <section id="panel-assignees" class="panel">
-      <div class="panel-bar">
-        <input id="a-name" placeholder="이름" />
-        <input id="a-email" placeholder="이메일" />
-        <select id="a-role"><option value="member">일반</option><option value="lead">팀장</option></select>
-        <button class="btn primary" id="btn-add-assignee">담당자 추가</button>
-      </div>
+      <p class="hint">담당자는 인허가 등록/수정 시 입력한 담당자 이메일에서 자동 수집됩니다.</p>
       <div class="table-scroll">
         <table class="admin-table">
-          <thead><tr><th>이름</th><th>이메일</th><th>역할</th><th></th></tr></thead>
+          <thead><tr><th>이름</th><th>이메일</th><th>역할</th></tr></thead>
           <tbody id="assignees-body"></tbody>
         </table>
       </div>
