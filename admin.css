@@ -114,7 +114,7 @@ body {
   font-size: 13px; cursor: pointer;
 }
 .sel-item:hover { background: #f7fafd; }
-.sel-item.no-email { opacity: .6; cursor: not-allowed; }
+.sel-item.no-email { opacity: .7; }
 .sel-item input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; flex: none; }
 .sel-name { flex: 1; font-weight: 600; color: var(--text); }
 .sel-meta { color: #666; white-space: nowrap; }

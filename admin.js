@@ -514,7 +514,7 @@ function renderSelectedNotifyList() {
     const email = (p.assignee_email || '').trim();
     const hasEmail = !!email;
     return `<div class="sel-item${hasEmail ? '' : ' no-email'}" data-id="${p.id}">
-      <input type="checkbox" class="sel-check" value="${p.id}"${hasEmail ? '' : ' disabled'} />
+      <input type="checkbox" class="sel-check" value="${p.id}" />
       <span class="sel-name">${escapeHtml(fullDesc(p))}</span>
       <span class="sel-meta">${escapeHtml(p.category || '')}</span>
       <span class="sel-meta">${formatDate(p.due_date)}</span>
@@ -533,7 +533,6 @@ function renderSelectedNotifyList() {
     });
     row.addEventListener('click', (e) => {
       if (e.target === cb) return;
-      if (cb.disabled) return;
       cb.checked = !cb.checked;
       cb.dispatchEvent(new Event('change'));
     });
@@ -544,7 +543,7 @@ function renderSelectedNotifyList() {
 }
 
 function updateSelectedNotifyCheckAll() {
-  const boxes = [...document.querySelectorAll('#selected-notify-list .sel-check:not(:disabled)')];
+  const boxes = [...document.querySelectorAll('#selected-notify-list .sel-check')];
   const all = $('#selected-notify-check-all');
   all.checked = boxes.length > 0 && boxes.every((c) => c.checked);
 }
@@ -746,7 +745,7 @@ $('#btn-selected-notify-send').addEventListener('click', sendSelectedNotificatio
 $('#btn-selected-notify-cancel').addEventListener('click', () => $('#selected-notify-dialog').close());
 $('#selected-notify-check-all').addEventListener('change', () => {
   const on = $('#selected-notify-check-all').checked;
-  document.querySelectorAll('#selected-notify-list .sel-check:not(:disabled)').forEach((c) => {
+  document.querySelectorAll('#selected-notify-list .sel-check').forEach((c) => {
     c.checked = on;
     if (on) selectedNotifyIds.add(c.value);
     else selectedNotifyIds.delete(c.value);
