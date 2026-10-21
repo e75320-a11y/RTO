@@ -62,6 +62,13 @@ function updateRoleBadge() {
   b.className = 'role-badge' + (isLead() ? ' lead' : '');
 }
 
+// 변경 요청 확인용 관리자 URL (팀장이 메일에서 바로 접속)
+function changeRequestUrl() {
+  const url = new URL('admin.html', window.location.href);
+  url.searchParams.set('tab', 'requests');
+  return url.href;
+}
+
 // ---------- 로드 ----------
 async function loadAll() {
   const data = await loadAppData();
@@ -359,6 +366,7 @@ async function onSave(e) {
       postData('notify_change_request', {
         site: settings.site_name || 'Pyungtek',
         lead_email: settings.lead_email || '',
+        admin_url: changeRequestUrl(),
         request: {
           action,
           proposed_data: payload,
@@ -405,6 +413,7 @@ async function requestDelete(permit) {
       postData('notify_change_request', {
         site: settings.site_name || 'Pyungtek',
         lead_email: settings.lead_email || '',
+        admin_url: changeRequestUrl(),
         request: {
           action: 'delete',
           proposed_data: payload,
@@ -726,13 +735,17 @@ async function onTestEmail() {
 }
 
 // ---------- 탭 ----------
+function activateTab(name) {
+  const tab = document.querySelector(`.tab[data-tab="${name}"]`);
+  if (!tab) return;
+  document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach((p) => p.classList.remove('active'));
+  tab.classList.add('active');
+  $('#panel-' + name).classList.add('active');
+}
+
 document.querySelectorAll('.tab').forEach((tab) => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach((p) => p.classList.remove('active'));
-    tab.classList.add('active');
-    $('#panel-' + tab.dataset.tab).classList.add('active');
-  });
+  tab.addEventListener('click', () => activateTab(tab.dataset.tab));
 });
 
 // ---------- 기타 이벤트 ----------
@@ -788,6 +801,9 @@ async function init() {
     alert('초기 로드 실패: ' + err.message + '\nsheets-config.js 의 Apps Script URL을 확인하세요.');
     return;
   }
+  // 메일 링크(?tab=requests)로 들어오면 해당 탭 바로 열기
+  const tabParam = new URLSearchParams(location.search).get('tab');
+  if (tabParam) activateTab(tabParam);
   // 다른 탭에서 바뀐 내용을 주기적으로 반영
   setInterval(() => loadAll().catch(() => { $('#conn-banner').hidden = false; }), 60 * 1000);
 }
