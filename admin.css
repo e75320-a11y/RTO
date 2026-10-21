@@ -120,6 +120,11 @@ body {
 .sel-meta { color: #666; white-space: nowrap; }
 .sel-email { color: #888; font-size: 12px; white-space: nowrap; }
 .sel-empty { padding: 16px; color: #888; font-size: 13px; }
+#settings-password-dialog { width: min(420px, 92vw); }
+#settings-password-form { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+#settings-password-input {
+  padding: 9px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px;
+}
 dialog {
   border: none; border-radius: 10px; padding: 22px; width: min(640px, 92vw);
   box-shadow: 0 12px 40px rgba(0,0,0,.25);

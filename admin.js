@@ -35,6 +35,13 @@ const user = {
 const $ = (sel) => document.querySelector(sel);
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// 설정 화면 잠금 (초기 비밀번호, 설정 탭에서 변경 가능)
+const DEFAULT_SETTINGS_PASSWORD = 'eaton12!@';
+const SETTINGS_UNLOCK_KEY = 'rto_settings_unlocked';
+function settingsPassword() {
+  return (settings.settings_password || '').trim() || DEFAULT_SETTINGS_PASSWORD;
+}
+
 function newId() {
   if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
   return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
@@ -744,9 +751,47 @@ function activateTab(name) {
   $('#panel-' + name).classList.add('active');
 }
 
+// ---------- 설정 잠금 (비밀번호) ----------
+function isSettingsUnlocked() {
+  return sessionStorage.getItem(SETTINGS_UNLOCK_KEY) === '1';
+}
+
+function tryOpenSettingsTab() {
+  if (isSettingsUnlocked()) {
+    activateTab('settings');
+    return;
+  }
+  if ($('#settings-password-dialog').open) return;
+  $('#settings-pw-error').hidden = true;
+  const input = $('#settings-password-input');
+  input.value = '';
+  $('#settings-password-dialog').showModal();
+  setTimeout(() => input.focus(), 50);
+}
+
+function onSubmitSettingsPassword(e) {
+  e.preventDefault();
+  const input = $('#settings-password-input');
+  if (input.value === settingsPassword()) {
+    sessionStorage.setItem(SETTINGS_UNLOCK_KEY, '1');
+    $('#settings-password-dialog').close();
+    activateTab('settings');
+  } else {
+    $('#settings-pw-error').hidden = false;
+    input.value = '';
+    input.focus();
+  }
+}
+
 document.querySelectorAll('.tab').forEach((tab) => {
-  tab.addEventListener('click', () => activateTab(tab.dataset.tab));
+  tab.addEventListener('click', () => {
+    if (tab.dataset.tab === 'settings') tryOpenSettingsTab();
+    else activateTab(tab.dataset.tab);
+  });
 });
+
+$('#settings-password-form').addEventListener('submit', onSubmitSettingsPassword);
+$('#btn-settings-pw-cancel').addEventListener('click', () => $('#settings-password-dialog').close());
 
 // ---------- 기타 이벤트 ----------
 $('#btn-add').addEventListener('click', () => openDialog(null));
@@ -803,7 +848,8 @@ async function init() {
   }
   // 메일 링크(?tab=requests)로 들어오면 해당 탭 바로 열기
   const tabParam = new URLSearchParams(location.search).get('tab');
-  if (tabParam) activateTab(tabParam);
+  if (tabParam === 'settings') tryOpenSettingsTab();
+  else if (tabParam) activateTab(tabParam);
   // 다른 탭에서 바뀐 내용을 주기적으로 반영
   setInterval(() => loadAll().catch(() => { $('#conn-banner').hidden = false; }), 60 * 1000);
 }

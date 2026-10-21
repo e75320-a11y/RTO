@@ -106,6 +106,7 @@
         <label>팀장 이름 <input name="lead_name" /></label>
         <label>팀장 이메일 <input name="lead_email" /></label>
         <label>담당자 이메일(참조) <input name="manager_email" type="email" placeholder="cc@eaton.com" /></label>
+        <label>설정 비밀번호 <input name="settings_password" type="password" autocomplete="new-password" placeholder="설정 잠금 해제용" /></label>
         <label class="wide">Google Apps Script Web App URL <input name="apps_script_url" placeholder="https://script.google.com/macros/s/…/exec" /></label>
         <div class="wide">
           <button type="submit" class="btn primary">설정 저장</button>
@@ -190,6 +191,20 @@
       <button type="button" class="btn" id="btn-selected-notify-cancel">취소</button>
       <button type="button" class="btn primary" id="btn-selected-notify-send">메일알림 발송하기</button>
     </div>
+  </dialog>
+
+  <!-- 설정 잠금 비밀번호 모달 -->
+  <dialog id="settings-password-dialog">
+    <h2>설정 잠금</h2>
+    <p class="hint">설정 화면에 들어가려면 비밀번호를 입력하세요.</p>
+    <form id="settings-password-form">
+      <input type="password" id="settings-password-input" placeholder="비밀번호" autocomplete="off" />
+      <p class="hint warn" id="settings-pw-error" hidden>비밀번호가 올바르지 않습니다.</p>
+      <div class="dialog-actions">
+        <button type="button" class="btn" id="btn-settings-pw-cancel">취소</button>
+        <button type="submit" class="btn primary">확인</button>
+      </div>
+    </form>
   </dialog>
 
   <script type="module" src="admin.js"></script>
