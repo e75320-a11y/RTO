@@ -395,10 +395,39 @@ function editContactName() {
 document.getElementById('btn-fullscreen').addEventListener('click', () => {
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen?.();
+    acquireWakeLock();
   } else {
     document.exitFullscreen?.();
   }
 });
+
+// ---------- 화면 꺼짐/화면보호기 방지 (Screen Wake Lock) ----------
+let wakeLock = null;
+
+async function acquireWakeLock() {
+  if (!('wakeLock' in navigator) || wakeLock) return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => {
+      wakeLock = null;
+      // 탭 비활성화 등으로 잠금이 해제된 뒤 다시 보이면 재획득
+      if (document.fullscreenElement && document.visibilityState === 'visible') acquireWakeLock();
+    });
+  } catch (err) {
+    wakeLock = null;
+  }
+}
+
+async function releaseWakeLock() {
+  if (!wakeLock) return;
+  try { await wakeLock.release(); } catch (err) {}
+  wakeLock = null;
+}
+
+function syncWakeLock() {
+  if (document.fullscreenElement) acquireWakeLock();
+  else releaseWakeLock();
+}
 
 // ---------- 화면 맞춤: 전체화면에서 스크롤 없이 상하좌우 꽉 차게 표시 ----------
 function fitToScreen() {
@@ -446,6 +475,10 @@ function fitToScreen() {
 
 window.addEventListener('resize', fitToScreen);
 document.addEventListener('fullscreenchange', fitToScreen);
+document.addEventListener('fullscreenchange', syncWakeLock);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') syncWakeLock();
+});
 
 document.getElementById('btn-pptx').addEventListener('click', exportPptx);
 contactEl.addEventListener('click', editContactName);
