@@ -400,34 +400,48 @@ document.getElementById('btn-fullscreen').addEventListener('click', () => {
   }
 });
 
-// ---------- 화면 맞춤: 전체화면에서 스크롤 없이 한 화면에 표시 ----------
+// ---------- 화면 맞춤: 전체화면에서 스크롤 없이 상하좌우 꽉 차게 표시 ----------
 function fitToScreen() {
   const wrap = document.getElementById('table-wrap');
-  const box = document.getElementById('scale-box');
-  if (!wrap || !box) return;
+  const table = document.getElementById('rto-table');
+  if (!wrap || !table) return;
 
   const isFs = !!document.fullscreenElement;
 
   if (!isFs) {
-    box.style.transform = '';
+    table.style.fontSize = '';
+    table.style.removeProperty('--rto-pad-y');
     wrap.style.overflow = 'auto';
     return;
   }
 
-  // 자연 크기 측정을 위해 기존 변형을 초기화
-  box.style.transform = '';
   wrap.style.overflow = 'hidden';
+  table.style.setProperty('--rto-pad-y', '0px');
 
   const cs = getComputedStyle(wrap);
   const availW = wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
   const availH = wrap.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
 
-  const contentW = box.scrollWidth || box.offsetWidth;
-  const contentH = box.offsetHeight;
-  if (!contentW || !contentH) return;
+  // 한 줄(nowrap)을 유지한 채 가로/세로 모두 들어가는 최대 글자 크기 탐색
+  let lo = 9, hi = 64, best = 9;
+  for (let i = 0; i < 14; i++) {
+    const mid = (lo + hi) / 2;
+    table.style.fontSize = mid + 'px';
+    if (table.scrollWidth <= availW && table.scrollHeight <= availH) {
+      best = mid;
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+  table.style.fontSize = best + 'px';
 
-  const scale = Math.min(1, availW / contentW, availH / contentH);
-  box.style.transform = 'scale(' + scale + ')';
+  // 남는 세로 공간은 셀 상하 패딩으로 채워 위아래도 꽉 차게
+  const leftover = availH - table.scrollHeight;
+  const rowCount = table.rows.length;
+  let padY = rowCount > 0 ? leftover / (rowCount * 2) : 0;
+  padY = Math.max(0, Math.min(padY, 24));
+  table.style.setProperty('--rto-pad-y', padY + 'px');
 }
 
 window.addEventListener('resize', fitToScreen);
