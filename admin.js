@@ -589,6 +589,7 @@ async function sendSelectedNotifications() {
     await postData('notify', {
       site: settings.site_name || 'Pyungtek',
       lead_email: settings.lead_email || '',
+      manager_email: settings.manager_email || '',
       items: sendable,
     });
     $('#selected-notify-dialog').close();
@@ -652,6 +653,7 @@ async function sendNotifications() {
     await postData('notify', {
       site: settings.site_name || 'Pyungtek',
       lead_email: settings.lead_email || '',
+      manager_email: settings.manager_email || '',
       items: sendable,
     });
     $('#notify-dialog').close();
