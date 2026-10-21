@@ -93,7 +93,7 @@ function render() {
       <td>${escapeHtml(r.p.issuing_agency || 'N/A')}</td>
       <td class="col-date">${formatDate(r.p.issue_date)}</td>
       <td class="col-date">${dueText}${dueExtra}</td>
-      <td><span class="status-badge ${r.st} status-edit" data-status-id="${escapeHtml(r.p.id)}">${r.meta.kor}</span></td>
+      <td><span class="status-badge ${r.st} status-edit" data-status-id="${escapeHtml(r.p.id)}" title="${escapeHtml(r.meta.kor)}"></span></td>
       <td class="col-move"><span class="drag-handle" title="드래그하여 이동">⠿</span></td>
     </tr>`;
   }).join('');

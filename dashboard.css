@@ -4,7 +4,7 @@
   --border: #c9d2de;
   --text: #1f2937;
   --ok: #2e9e44;
-  --review: #f5b400;
+  --review: #ffff00;
   --expired: #d93025;
 }
 
@@ -82,12 +82,12 @@ body {
 .cat-cell { font-weight: 700; color: var(--blue); vertical-align: middle; }
 
 .status-badge {
-  display: inline-block; min-width: 86px; text-align: center;
-  padding: 5px 8px; border-radius: 4px; color: #fff; font-weight: 700; font-size: 12px;
+  display: inline-block; width: 30px; height: 18px;
+  border-radius: 4px; vertical-align: middle;
 }
 .status-badge.ok { background: var(--ok); }
-.status-badge.review { background: var(--review); color: #333; }
-.status-badge.none { background: #fff; color: var(--text); border: 1px solid var(--border); }
+.status-badge.review { background: var(--review); }
+.status-badge.none { background: #fff; border: 1px solid var(--border); }
 .status-badge.expired { background: var(--expired); }
 
 .status-badge.status-edit { cursor: pointer; }
