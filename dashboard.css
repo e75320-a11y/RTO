@@ -35,15 +35,14 @@ body {
 .brand {
   display: flex;
   flex-direction: column;
-  background: var(--blue);
-  color: #fff;
-  padding: 8px 14px;
+  align-items: flex-start;
+  gap: 2px;
   min-width: 210px;
 }
-.brand-name { font-size: 28px; font-weight: 800; letter-spacing: 1px; line-height: 1; }
-.brand-tag { font-size: 11px; opacity: .9; }
+.brand-logo { height: 28px; width: auto; display: block; }
+.brand-tag { font-size: 11px; color: var(--blue); }
 
-.title { flex: 1; font-size: 20px; font-weight: 700; color: var(--blue); }
+.title { flex: 1; font-size: 26px; font-weight: 800; color: var(--blue); }
 .title .site { font-weight: 400; color: #555; font-size: 15px; }
 
 .actions { display: flex; align-items: center; gap: 8px; }
