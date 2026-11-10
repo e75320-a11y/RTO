@@ -81,8 +81,8 @@ body {
 .cat-cell { font-weight: 700; color: var(--blue); vertical-align: middle; }
 
 .status-badge {
-  display: inline-block; width: 30px; height: 18px;
-  border-radius: 4px; vertical-align: middle;
+  display: block; width: 100%; height: 22px;
+  border-radius: 4px;
 }
 .status-badge.ok { background: var(--ok); }
 .status-badge.review { background: var(--review); }
