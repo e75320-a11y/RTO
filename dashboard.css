@@ -39,7 +39,7 @@ body {
   gap: 2px;
   min-width: 210px;
 }
-.brand-logo { height: 28px; width: auto; display: block; }
+.brand-logo { height: 20px; width: auto; display: block; }
 .brand-tag { font-size: 11px; color: var(--blue); }
 
 .title { flex: 1; font-size: 26px; font-weight: 800; color: var(--blue); }
